@@ -1,0 +1,73 @@
+# Reusable: deploy one already-built image to one environment over SSH
+
+name: Deploy (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment: production | development'
+        required: true
+        type: string
+      image_name:
+        description: 'Registry image name without tag'
+        required: true
+        type: string
+      image_tag:
+        description: 'Image tag to deploy (short SHA)'
+        required: true
+        type: string
+      git_ref:
+        description: 'Commit/ref to source compose files from (defaults to this run''s SHA)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout deploy assets at the deployed commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.git_ref || github.sha }}
+
+      - name: Upload deploy assets
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: 'deploy/'
+          target: '~/mcp/${{ inputs.environment }}'
+          strip_components: 1
+          overwrite: true
+
+      - name: Deploy (health-gated, auto-rollback)
+        uses: appleboy/ssh-action@v1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+          DEPLOY_ENV: ${{ inputs.environment }}
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          DOMAIN: ${{ vars.DOMAIN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          envs: GHCR_TOKEN,GHCR_ACTOR,DEPLOY_ENV,IMAGE_NAME,IMAGE_TAG,DATABASE_URL,REDIS_PASSWORD,DOMAIN
+          script: |
+            set -euo pipefail
+            chmod +x "$HOME/mcp/$DEPLOY_ENV/deploy.sh"
+            "$HOME/mcp/$DEPLOY_ENV/deploy.sh" "$DEPLOY_ENV" "$IMAGE_NAME" "$IMAGE_TAG"

@@ -1,0 +1,142 @@
+# Production promotion. Two triggers:
+#   * release: published  → promote the release commit's already-built image (no rebuild)
+#   * workflow_dispatch   → manual escape hatch (choose a SHA, optionally rebuild)
+
+name: Deploy Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Short SHA to deploy (default: this ref''s SHA)'
+        required: false
+        type: string
+      git_ref:
+        description: 'Commit/ref to source compose from (default: this ref). Set to the old SHA for a config-consistent rollback.'
+        required: false
+        type: string
+      build:
+        description: 'Build the image from this ref before deploying (escape hatch)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      image_name: ${{ steps.r.outputs.image_name }}
+      image_tag: ${{ steps.r.outputs.image_tag }}
+      git_ref: ${{ steps.r.outputs.git_ref }}
+      need_build: ${{ steps.r.outputs.need_build }}
+    steps:
+      - name: Resolve
+        id: r
+        env:
+          EVENT: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          IN_TAG: ${{ github.event.inputs.image_tag }}
+          IN_REF: ${{ github.event.inputs.git_ref }}
+          IN_BUILD: ${{ github.event.inputs.build }}
+        run: |
+          NAME="ghcr.io/$(echo "$REPO" | tr 'A-Z' 'a-z')"
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            TAG="${IN_TAG:-${GITHUB_SHA::8}}"
+            REF="${IN_REF:-$GITHUB_SHA}"
+            NEED="${IN_BUILD:-false}"
+          else
+            TAG="${GITHUB_SHA::8}"
+            REF="$GITHUB_SHA"
+            NEED="false"
+          fi
+          {
+            echo "image_name=$NAME"
+            echo "image_tag=$TAG"
+            echo "git_ref=$REF"
+            echo "need_build=$NEED"
+          } >> "$GITHUB_OUTPUT"
+
+  # Escape hatch only: build a specific SHA on demand
+  build:
+    needs: resolve
+    if: needs.resolve.outputs.need_build == 'true'
+    uses: ./.github/workflows/_build.yml
+    with:
+      float_tag: latest
+    secrets: inherit
+
+  # Automatic path: the image must already exist (built + validated in dev)
+  guard:
+    name: Verify image exists in GHCR
+    needs: resolve
+    if: needs.resolve.outputs.need_build != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check manifest
+        env:
+          NAME: ${{ needs.resolve.outputs.image_name }}
+          TAG: ${{ needs.resolve.outputs.image_tag }}
+        run: |
+          if ! docker manifest inspect "$NAME:$TAG" >/dev/null 2>&1; then
+            echo "::error::No image $NAME:$TAG in GHCR. A Release must point at a commit already built and validated in development. To ship an arbitrary SHA, use manual dispatch with build=true."
+            exit 1
+          fi
+          echo "::notice::Found $NAME:$TAG"
+
+  deploy:
+    needs: [resolve, build, guard]
+    if: >-
+      always() &&
+      needs.resolve.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
+      (needs.guard.result == 'success' || needs.guard.result == 'skipped')
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: production
+      image_name: ${{ needs.build.outputs.image_name || needs.resolve.outputs.image_name }}
+      image_tag: ${{ needs.build.outputs.image_tag || needs.resolve.outputs.image_tag }}
+      git_ref: ${{ needs.resolve.outputs.git_ref }}
+    secrets: inherit
+
+  # Point the floating `latest` tag at the promoted image (manifest copy, no rebuild).
+  promote-latest:
+    needs: [resolve, build, deploy]
+    if: needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Move latest tag
+        env:
+          NAME: ${{ needs.build.outputs.image_name || needs.resolve.outputs.image_name }}
+          TAG: ${{ needs.build.outputs.image_tag || needs.resolve.outputs.image_tag }}
+        run: docker buildx imagetools create --tag "$NAME:latest" "$NAME:$TAG"

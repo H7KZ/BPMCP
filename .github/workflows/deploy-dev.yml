@@ -1,0 +1,39 @@
+# Development pipeline: every merge to main builds the image once and auto-deploys
+# it to the development environment. This is the artifact that later gets promoted
+# to production unchanged (build once, deploy many)
+
+name: Deploy Development
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'infra/**'
+      - '.example/**'
+      - '.github/ISSUE_TEMPLATE/**'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-development
+  cancel-in-progress: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/_build.yml
+    with:
+      float_tag: dev-latest
+    secrets: inherit
+
+  deploy:
+    needs: build
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: development
+      image_name: ${{ needs.build.outputs.image_name }}
+      image_tag: ${{ needs.build.outputs.image_tag }}
+    secrets: inherit

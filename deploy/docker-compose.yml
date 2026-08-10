@@ -1,0 +1,95 @@
+# App stack for one environment
+# Shipped to ~/mcp/<env>/ and driven by deploy.sh
+
+services:
+  mcp:
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      METRICS_PORT: "9090"
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+    # traefik-network: ingress, redis: cache, metrics-network: prometheus scrape
+    # The metrics-network alias (mcp-production / mcp-development) is the static
+    # target Prometheus scrapes on :9090
+    networks:
+      traefik-network: {}
+      redis: {}
+      metrics-network:
+        aliases:
+          - mcp-${ENV}
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik-network'
+      - 'traefik.http.routers.mcp-${ENV}.rule=Host(`${DOMAIN}`)'
+      - 'traefik.http.routers.mcp-${ENV}.entrypoints=websecure'
+      - 'traefik.http.routers.mcp-${ENV}.tls=true'
+      - 'traefik.http.routers.mcp-${ENV}.tls.certresolver=le'
+      - 'traefik.http.services.mcp-${ENV}.loadbalancer.server.port=3000'
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:8.10.0
+    restart: unless-stopped
+
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+
+    networks:
+      - redis
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  traefik-network:
+    external: true
+
+  redis:
+    driver: bridge
+
+  metrics-network:
+    external: true

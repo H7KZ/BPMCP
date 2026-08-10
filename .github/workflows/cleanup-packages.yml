@@ -1,0 +1,27 @@
+# Weekly GHCR housekeeping. Keeps the most recent SHA-tagged images (enough to
+# roll back / re-promote) and always preserves the floating tags... Prunes the rest
+
+name: Cleanup GHCR
+
+on:
+  schedule:
+    - cron: '0 4 * * 0' # Sundays 04:00 UTC
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  prune:
+    name: Prune old package versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Delete old versions (keep last 15 + floating tags)
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: bpmcp
+          package-type: container
+          min-versions-to-keep: 15
+          ignore-versions: '^(latest|dev-latest)$'
+          token: ${{ secrets.GITHUB_TOKEN }}
