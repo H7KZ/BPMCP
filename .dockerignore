@@ -1,0 +1,22 @@
+# Editors
+.idea/
+.vscode/
+
+# Git
+.git/
+.github/
+.gitignore
+
+# Background infrastructure
+infra/
+deploy/
+docs/
+
+# Node / build artifacts
+node_modules/
+dist/
+coverage/
+
+# Docker
+Dockerfile
+.dockerignore
