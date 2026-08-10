@@ -1,0 +1,54 @@
+# Sync infra to the server
+
+name: Sync Infra
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/sync-infra.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # false: cancelling mid-transfer would leave a stack half-updated on the box
+  group: sync-infra
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync infra source to the server
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Sync infra/ → /opt/stacks
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: 'infra/'
+          target: '/opt/stacks'
+          strip_components: 1
+          overwrite: true
+
+      - name: Report what landed (no apply)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            set -euo pipefail
+            chmod +x /opt/stacks/scripts/*.sh 2>/dev/null || true
+            echo "Synced infra source to /opt/stacks at $(date -u +%FT%TZ):"
+            ls -1 /opt/stacks
+            echo "Source staged only — NOTHING applied. Apply by hand: see docs/OPERATIONS.md."
