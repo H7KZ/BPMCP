@@ -1,0 +1,14 @@
+# Discord contact point
+
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: discord
+    receivers:
+      - uid: discord-webhook
+        type: discord
+        settings:
+          url: ${DISCORD_WEBHOOK_URL}
+          message: '{{ template "discord_alert_message" . }}'
+        disableResolveMessage: false

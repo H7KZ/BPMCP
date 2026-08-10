@@ -1,0 +1,117 @@
+# Monitoring stack
+# Prometheus + Grafana + Loki + Alloy
+
+services:
+  # Prometheus
+  # scrapes mcp-{production,development}:9090 + traefik:8080
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-400d}'
+      - '--storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-3GB}'
+      - '--web.enable-lifecycle'
+    volumes:
+      - prometheus-data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '127.0.0.1:9090:9090' # loopback (SSH tunnel)
+    networks:
+      - monitoring-network
+      - metrics-network
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 512M }
+        reservations: { cpus: '0.1', memory: 128M }
+
+  # Grafana
+  # dashboards + Discord alerting
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    depends_on: [prometheus, loki]
+    environment:
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - '127.0.0.1:3000:3000' # loopback (SSH tunnel)
+    networks:
+      - monitoring-network
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 512M }
+        reservations: { cpus: '0.1', memory: 128M }
+
+  # Loki
+  # log store (30-day retention, structured metadata)
+  loki:
+    image: grafana/loki:3.3.2
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - loki-data:/loki
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+    networks:
+      - monitoring-network
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 512M }
+        reservations: { cpus: '0.1', memory: 128M }
+
+  # Alloy
+  # tails container stdout via the Docker socket -> Loki
+  alloy:
+    image: grafana/alloy:v1.5.1
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+    # The Docker socket is root-equivalent; group_add gives the alloy user read
+    # access without running the container as root
+    group_add:
+      - '${DOCKER_GID:-989}'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+    networks:
+      - monitoring-network
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '3' }
+    deploy:
+      resources:
+        limits: { cpus: '0.3', memory: 256M }
+        reservations: { cpus: '0.05', memory: 64M }
+
+networks:
+  monitoring-network:
+    driver: bridge
+  metrics-network:
+    external: true
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  alloy-data:

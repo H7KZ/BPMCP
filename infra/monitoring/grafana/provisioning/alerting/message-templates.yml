@@ -1,0 +1,18 @@
+# Discord message template
+
+apiVersion: 1
+
+templates:
+  - orgId: 1
+    name: discord_alert_message
+    template: |
+      {{ define "discord_alert_message" -}}
+      {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} **{{ .CommonLabels.alertname }}**
+      **Status:** {{ .Status | toUpper }}{{ if .CommonLabels.env }} · **Env:** {{ .CommonLabels.env }}{{ end }}{{ if .CommonLabels.severity }} · **Severity:** {{ .CommonLabels.severity | toUpper }}{{ end }}
+      {{ range .Alerts -}}
+      {{ .Annotations.summary }}
+      {{ if .Annotations.description -}}
+      > {{ .Annotations.description }}
+      {{ end -}}
+      {{ end -}}
+      {{- end }}

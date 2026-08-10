@@ -1,0 +1,87 @@
+// Loki
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "container_labels" {
+  targets = discovery.docker.containers.targets
+
+  // Drop the monitoring stack's own logs — noise, not application data.
+  // Container names are "/<compose-project>-<service>-N" (e.g. /monitoring-grafana-1),
+  // so match the service name anywhere after the leading slash, not just at its start.
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/.*(grafana|prometheus|loki|alloy).*"
+    action        = "drop"
+  }
+
+  // Container name -> "container" label (strip leading /)
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  // Compose project -> guaranteed prod/dev separation even for non-JSON lines
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+}
+
+loki.source.docker "docker_logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.container_labels.output
+  forward_to = [loki.process.parse_json.receiver]
+}
+
+loki.process "parse_json" {
+  // Parse pino JSON. Non-JSON lines pass through as plain text.
+  stage.json {
+    expressions = {
+      level       = "level",
+      service     = "service",
+      env         = "env",
+      request_id  = "request_id",
+      tool_name   = "tool_name",
+      status      = "status",
+      client_name = "client_name",
+      route       = "route",
+    }
+  }
+
+  // Drop health-check / metrics-scrape access lines if the app emits them — zero signal.
+  stage.drop {
+    source              = "route"
+    expression          = "^/(health|metrics)$"
+    drop_counter_reason = "healthcheck_or_metrics_endpoint"
+  }
+
+  // Tiny, low-cardinality stream labels.
+  stage.labels {
+    values = {
+      level   = "",
+      service = "",
+      env     = "",
+    }
+  }
+
+  // High-cardinality identifiers -> structured metadata (queryable, not indexed).
+  stage.structured_metadata {
+    values = {
+      request_id  = "",
+      tool_name   = "",
+      status      = "",
+      client_name = "",
+    }
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

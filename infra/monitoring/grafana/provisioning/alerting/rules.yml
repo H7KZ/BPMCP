@@ -1,0 +1,86 @@
+# Alert rules.
+
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: availability
+    folder: BPMCP
+    interval: 1m
+    rules:
+      - uid: mcp-target-down
+        title: MCP target down
+        condition: A
+        for: 2m
+        annotations:
+          summary: 'BPMCP is not being scraped ({{ $labels.env }})'
+          description: 'Prometheus cannot reach the mcp {{ $labels.env }} /metrics endpoint — the service is down or unreachable.'
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: Prometheus
+            model:
+              expr: up{job="mcp"} == 0
+              instant: true
+              refId: A
+
+  - orgId: 1
+    name: degraded-production
+    folder: BPMCP
+    interval: 1m
+    rules:
+      - uid: mcp-error-rate-high
+        title: MCP error rate high (production)
+        condition: A
+        for: 10m
+        annotations:
+          summary: 'Tool-call error rate above 5% (production)'
+          description: 'More than 5% of production tool calls have returned errors over the last 10 minutes.'
+        labels:
+          severity: critical
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: Prometheus
+            model:
+              expr: sum(rate(mcp_tool_calls_total{env="production",status="error"}[10m])) / clamp_min(sum(rate(mcp_tool_calls_total{env="production"}[10m])), 0.0001) > 0.05
+              instant: true
+              refId: A
+
+      - uid: mcp-latency-p95-high
+        title: MCP p95 latency high (production)
+        condition: A
+        for: 10m
+        annotations:
+          summary: 'Tool-call p95 latency above 2s (production)'
+          description: 'The 95th-percentile production tool-call duration has exceeded 2 seconds for 10 minutes — likely InSIS DB slowness.'
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: Prometheus
+            model:
+              expr: histogram_quantile(0.95, sum by (le) (rate(mcp_tool_call_duration_seconds_bucket{env="production"}[10m]))) > 2
+              instant: true
+              refId: A
+
+      - uid: mcp-redis-hitrate-low
+        title: MCP cache hit-rate collapsed (production)
+        condition: A
+        for: 10m
+        annotations:
+          summary: 'Redis cache hit-rate below 50% (production)'
+          description: 'The production cache hit-rate has dropped below 50% for 10 minutes — most calls are hitting the InSIS DB directly. Check Redis.'
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: Prometheus
+            model:
+              expr: sum(rate(mcp_redis_requests_total{env="production",result="hit"}[10m])) / clamp_min(sum(rate(mcp_redis_requests_total{env="production"}[10m])), 0.0001) < 0.5
+              instant: true
+              refId: A
