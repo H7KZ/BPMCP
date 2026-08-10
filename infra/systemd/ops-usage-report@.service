@@ -1,0 +1,9 @@
+[Unit]
+Description=Usage report (%i) to Discord
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/ops.env
+ExecStart=/opt/ops/usage-report.sh %i production

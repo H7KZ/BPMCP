@@ -1,0 +1,12 @@
+[Unit]
+Description=Monthly usage report
+
+[Timer]
+# 1st of each month at 07:15
+OnCalendar=*-*-01 07:15:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=ops-usage-report@monthly.service
+
+[Install]
+WantedBy=timers.target

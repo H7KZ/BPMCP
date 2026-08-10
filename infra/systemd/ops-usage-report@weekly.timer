@@ -1,0 +1,12 @@
+[Unit]
+Description=Weekly usage report
+
+[Timer]
+# Mondays at 07:10
+OnCalendar=Mon *-*-* 07:10:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=ops-usage-report@weekly.service
+
+[Install]
+WantedBy=timers.target

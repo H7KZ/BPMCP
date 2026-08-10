@@ -1,0 +1,15 @@
+[Unit]
+Description=Post-boot health check (verify Docker stack recovered + report to Discord)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/ops.env
+ExecStartPre=/bin/sleep 5
+ExecStart=/opt/ops/health-check.sh
+
+[Install]
+WantedBy=multi-user.target

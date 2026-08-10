@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily server maintenance report (security + health digest to Discord)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/ops.env
+ExecStart=/opt/ops/maintenance.sh
