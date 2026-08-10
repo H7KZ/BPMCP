@@ -1,0 +1,83 @@
+# Traefik
+# the ONLY container allowed to publish :80/:443
+
+services:
+  traefik:
+    image: traefik:v3.7.10
+    restart: unless-stopped
+
+    command:
+      - --global.checknewversion=false
+      - --global.sendanonymoususage=false
+
+      - --ping=true
+
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=traefik-network
+
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      - --entrypoints.websecure.address=:443
+
+      # Prometheus metrics for the monitoring stack.
+      # Served on the :8080 metrics entrypoint, reachable only over metrics-network
+      # (NOT published — no ports entry for 8080, so it never hits the public internet).
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entrypoint=metrics
+      - --entrypoints.metrics.address=:8080
+
+      # Let's Encrypt via TLS-ALPN-01 (default)
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/certs/acme.json
+      - --certificatesresolvers.le.acme.tlschallenge=true
+
+      # Alternative:
+      #   - Cloudflare DNS-01 (use if the domain is behind CF proxy)
+      #     set CF_DNS_API_TOKEN in .env + the environment block below:
+      #     - --certificatesresolvers.le.acme.dnschallenge=true
+      #     - --certificatesresolvers.le.acme.dnschallenge.provider=cloudflare
+
+    environment:
+      TZ: Europe/Prague
+      # Only for the DNS-01 alternative
+      # CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/certs
+
+    networks:
+      - traefik-network
+      - metrics-network
+
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+networks:
+  traefik-network:
+    name: traefik-network
+
+  # Shared scrape network for the monitoring stack. Create it before Traefik:
+  #   docker network create metrics-network
+  metrics-network:
+    external: true
+
+volumes:
+  certs:
