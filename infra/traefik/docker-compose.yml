@@ -22,12 +22,11 @@ services:
       - --entrypoints.web.http.redirections.entrypoint.permanent=true
       - --entrypoints.websecure.address=:443
 
-      # Prometheus metrics for the monitoring stack.
-      # Served on the :8080 metrics entrypoint, reachable only over metrics-network
-      # (NOT published — no ports entry for 8080, so it never hits the public internet).
+      # Prometheus metrics for the monitoring stack
+      # Served on the :8082 metrics entrypoint, reachable only over metrics-network
       - --metrics.prometheus=true
       - --metrics.prometheus.entrypoint=metrics
-      - --entrypoints.metrics.address=:8080
+      - --entrypoints.metrics.address=:8082
 
       # Let's Encrypt via TLS-ALPN-01 (default)
       - --certificatesresolvers.le.acme.email=${ACME_EMAIL}

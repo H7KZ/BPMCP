@@ -3,7 +3,7 @@
 
 services:
   # Prometheus
-  # scrapes mcp-{production,development}:9090 + traefik:8080
+  # scrapes mcp-{production,development}:9090 + traefik:8082
   prometheus:
     image: prom/prometheus:v3.1.0
     restart: unless-stopped
