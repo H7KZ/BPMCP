@@ -1,7 +1,7 @@
 {
-  "uid": "bpmcp-logs",
-  "title": "BPMCP — Logs",
-  "tags": ["bpmcp"],
+  "uid": "mcp-logs",
+  "title": "MCP — Logs",
+  "tags": ["mcp"],
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,

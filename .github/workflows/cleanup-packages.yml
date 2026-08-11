@@ -20,7 +20,7 @@ jobs:
       - name: Delete old versions (keep last 15 + floating tags)
         uses: actions/delete-package-versions@v5
         with:
-          package-name: bpmcp
+          package-name: BPMCP
           package-type: container
           min-versions-to-keep: 15
           ignore-versions: '^(latest|dev-latest)$'

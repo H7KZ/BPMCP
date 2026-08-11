@@ -1,7 +1,7 @@
 {
-  "uid": "bpmcp-service-health",
-  "title": "BPMCP — Service Health",
-  "tags": ["bpmcp"],
+  "uid": "mcp-service-health",
+  "title": "MCP — Service Health",
+  "tags": ["mcp"],
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,

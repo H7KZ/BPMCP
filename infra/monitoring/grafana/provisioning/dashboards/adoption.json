@@ -1,7 +1,7 @@
 {
-  "uid": "bpmcp-adoption",
-  "title": "BPMCP — Adoption",
-  "tags": ["bpmcp"],
+  "uid": "mcp-adoption",
+  "title": "MCP — Adoption",
+  "tags": ["mcp"],
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,

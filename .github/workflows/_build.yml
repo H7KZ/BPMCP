@@ -11,7 +11,7 @@ on:
         type: string
     outputs:
       image_name:
-        description: 'Registry image name without tag, e.g. ghcr.io/h7kz/bpmcp'
+        description: 'Registry image name without tag, e.g. ghcr.io/h7kz/BPMCP'
         value: ${{ jobs.build.outputs.image_name }}
       image_tag:
         description: 'Short SHA used as the immutable image tag'

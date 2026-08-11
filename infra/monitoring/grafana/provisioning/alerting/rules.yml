@@ -5,7 +5,7 @@ apiVersion: 1
 groups:
   - orgId: 1
     name: availability
-    folder: BPMCP
+    folder: MCP
     interval: 1m
     rules:
       - uid: mcp-target-down
@@ -13,7 +13,7 @@ groups:
         condition: A
         for: 2m
         annotations:
-          summary: 'BPMCP is not being scraped ({{ $labels.env }})'
+          summary: 'MCP is not being scraped ({{ $labels.env }})'
           description: 'Prometheus cannot reach the mcp {{ $labels.env }} /metrics endpoint — the service is down or unreachable.'
         labels:
           severity: critical
@@ -28,7 +28,7 @@ groups:
 
   - orgId: 1
     name: degraded-production
-    folder: BPMCP
+    folder: MCP
     interval: 1m
     rules:
       - uid: mcp-error-rate-high

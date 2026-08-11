@@ -4,7 +4,7 @@ set -euo pipefail
 # ==============================================================================
 # usage-report.sh {daily|weekly|monthly} [environment]
 #
-# Queries the (loopback) Prometheus and posts a BPMCP usage summary to Discord.
+# Queries the (loopback) Prometheus and posts a MCP usage summary to Discord.
 # NON-IDENTIFYING metrics only — volume / reliability / popularity. No unique
 # users, no IPs (see CONTEXT.md "Usage" + docs/adr/0002-monitoring-topology.md).
 #
@@ -62,7 +62,7 @@ if [ -z "$DISCORD_WEBHOOK_URL" ]; then
 fi
 
 payload=$(jq -n \
-  --arg t "📊 BPMCP ${TITLE} usage — ${ENV_LABEL}" \
+  --arg t "📊 MCP ${TITLE} usage — ${ENV_LABEL}" \
   --arg d "${DESC:0:3900}" \
   --argjson c "$COLOR" \
   --arg h "$(hostname)" \
