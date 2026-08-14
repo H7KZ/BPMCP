@@ -1,0 +1,25 @@
+# Editors
+.idea/
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+
+# Node / build artifacts
+node_modules/
+dist/
+cache/
+coverage/
+
+# Local env
+.env
+*.env
+!.env.example
+
+# Docker
+Dockerfile
+.dockerignore
