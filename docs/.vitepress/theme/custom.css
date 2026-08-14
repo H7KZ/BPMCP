@@ -1,0 +1,53 @@
+/**
+ * InSIS design mapped onto VitePress theme variables
+ */
+
+:root {
+	--vp-font-family-base: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--vp-font-family-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', 'Courier New', monospace;
+
+	--vp-c-brand-1: #1654e8;
+	--vp-c-brand-2: #1048cc;
+	--vp-c-brand-3: #1654e8;
+	--vp-c-brand-soft: #dce9ff;
+
+	--vp-c-brand: var(--vp-c-brand-1);
+	--vp-c-brand-light: #1654e8;
+	--vp-c-brand-lighter: #93b4f8;
+	--vp-c-brand-dark: #1048cc;
+	--vp-c-brand-darker: #0d3faa;
+
+	--vp-home-hero-name-color: transparent;
+	--vp-home-hero-name-background: -webkit-linear-gradient(120deg, #1654e8 30%, #0d3faa);
+	--vp-home-hero-image-background-image: linear-gradient(-45deg, #1654e8 30%, #93b4f8);
+	--vp-home-hero-image-filter: blur(44px);
+}
+
+.dark {
+	--vp-c-brand-1: #5b8ef5;
+	--vp-c-brand-2: #4075ea;
+	--vp-c-brand-3: #4075ea;
+	--vp-c-brand-soft: #242424;
+
+	--vp-c-brand: var(--vp-c-brand-1);
+	--vp-c-brand-light: #4075ea;
+	--vp-c-brand-lighter: #93b4f8;
+	--vp-c-brand-dark: #3669df;
+	--vp-c-brand-darker: #2359ca;
+
+	--vp-home-hero-name-background: -webkit-linear-gradient(120deg, #5b8ef5 30%, #4075ea);
+	--vp-home-hero-image-background-image: linear-gradient(-45deg, #4075ea 30%, #1e1e1e);
+}
+
+:root {
+	--vp-button-brand-border-radius: 5px;
+}
+
+.vp-doc div[class*='language-'],
+.vp-doc .custom-block {
+	border-radius: 5px;
+}
+
+.vp-doc a {
+	text-underline-offset: 3px;
+}

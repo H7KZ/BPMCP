@@ -3,7 +3,6 @@ Description=Run the daily server maintenance report
 
 [Timer]
 # Daily at 07:00 local time
-# edit: systemctl daemon-reload
 OnCalendar=*-*-* 07:00:00
 Persistent=true
 RandomizedDelaySec=120

@@ -1,3 +1,14 @@
+# Grafana Dashboard Provisioning Configuration File
+#
+# - adoption.json
+#   Dashboard about adoption metrics (MCP calls, usage, ...)
+#
+# - logs.json
+#   Dashboard to search and visualize logs from MCP server
+#
+# - service-health.json
+#   Dashboard to visualize health, performance and availability of MCP services
+
 apiVersion: 1
 
 providers:

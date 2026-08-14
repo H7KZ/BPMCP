@@ -1,6 +1,8 @@
-# Reusable: build the MCP image and push to GHCR
+# CD Reusable
+# build the docs image (always) and the MCP image (when server code
+# exists) and push both to GHCR under a shared short-SHA tag
 
-name: Build image (reusable)
+name: Build images (reusable)
 
 on:
   workflow_call:
@@ -10,12 +12,18 @@ on:
         required: true
         type: string
     outputs:
+      docs_image_name:
+        description: 'Docs image name without tag, e.g. ghcr.io/h7kz/bpmcp-docs'
+        value: ${{ jobs.build.outputs.docs_image_name }}
       image_name:
-        description: 'Registry image name without tag, e.g. ghcr.io/h7kz/BPMCP'
+        description: 'MCP image name without tag, e.g. ghcr.io/h7kz/bpmcp'
         value: ${{ jobs.build.outputs.image_name }}
       image_tag:
-        description: 'Short SHA used as the immutable image tag'
+        description: 'Short SHA used as the immutable tag for both images'
         value: ${{ jobs.build.outputs.image_tag }}
+      mcp_built:
+        description: 'true when the MCP image was built (mcp/src present)'
+        value: ${{ jobs.build.outputs.mcp_built }}
 
 jobs:
   build:
@@ -26,8 +34,10 @@ jobs:
       contents: read
       packages: write
     outputs:
+      docs_image_name: ${{ steps.meta.outputs.docs_image_name }}
       image_name: ${{ steps.meta.outputs.image_name }}
       image_tag: ${{ steps.meta.outputs.image_tag }}
+      mcp_built: ${{ steps.meta.outputs.mcp_built }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -39,11 +49,15 @@ jobs:
         run: |
           NAME="ghcr.io/$(echo "$REPO" | tr 'A-Z' 'a-z')"
           TAG="${GITHUB_SHA::8}"
+          # The MCP image is only buildable once the server code lands.
+          if [ -d mcp/src ]; then MCP_BUILT=true; else MCP_BUILT=false; fi
           {
             echo "image_name=$NAME"
+            echo "docs_image_name=$NAME-docs"
             echo "image_tag=$TAG"
+            echo "mcp_built=$MCP_BUILT"
           } >> "$GITHUB_OUTPUT"
-          echo "::notice::Building $NAME:$TAG (+ ${{ inputs.float_tag }})"
+          echo "::notice::Building $NAME-docs:$TAG (+ ${{ inputs.float_tag }}); mcp_built=$MCP_BUILT"
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v4
@@ -55,15 +69,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push docs
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: ./Dockerfile
+          context: ./docs
+          file: ./docs/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.docs_image_name }}:${{ steps.meta.outputs.image_tag }}
+            ${{ steps.meta.outputs.docs_image_name }}:${{ inputs.float_tag }}
+          cache-from: type=gha,scope=docs
+          cache-to: type=gha,mode=max,scope=docs
+          platforms: linux/amd64
+
+      - name: Build and push mcp
+        if: steps.meta.outputs.mcp_built == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ./mcp
+          file: ./mcp/Dockerfile
           push: true
           tags: |
             ${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.image_tag }}
             ${{ steps.meta.outputs.image_name }}:${{ inputs.float_tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=mcp
+          cache-to: type=gha,mode=max,scope=mcp
           platforms: linux/amd64

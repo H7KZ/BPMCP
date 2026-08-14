@@ -1,4 +1,5 @@
-# Reusable: deploy one already-built image to one environment over SSH
+# CD Reusable
+# deploy the already-built images to one environment over SSH
 
 name: Deploy (reusable)
 
@@ -9,14 +10,23 @@ on:
         description: 'Target environment: production | development'
         required: true
         type: string
+      docs_image_name:
+        description: 'Docs image name without tag'
+        required: true
+        type: string
       image_name:
-        description: 'Registry image name without tag'
+        description: 'MCP image name without tag'
         required: true
         type: string
       image_tag:
-        description: 'Image tag to deploy (short SHA)'
+        description: 'Image tag to deploy (short SHA), shared by both images'
         required: true
         type: string
+      mcp_built:
+        description: 'Whether the MCP image exists and should be deployed'
+        required: false
+        type: string
+        default: 'false'
       git_ref:
         description: 'Commit/ref to source compose files from (defaults to this run''s SHA)'
         required: false
@@ -56,8 +66,10 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_ACTOR: ${{ github.actor }}
           DEPLOY_ENV: ${{ inputs.environment }}
+          DOCS_IMAGE_NAME: ${{ inputs.docs_image_name }}
           IMAGE_NAME: ${{ inputs.image_name }}
           IMAGE_TAG: ${{ inputs.image_tag }}
+          MCP_ENABLED: ${{ inputs.mcp_built }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           DOMAIN: ${{ vars.DOMAIN }}
@@ -66,8 +78,8 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
-          envs: GHCR_TOKEN,GHCR_ACTOR,DEPLOY_ENV,IMAGE_NAME,IMAGE_TAG,DATABASE_URL,REDIS_PASSWORD,DOMAIN
+          envs: GHCR_TOKEN,GHCR_ACTOR,DEPLOY_ENV,DOCS_IMAGE_NAME,IMAGE_NAME,IMAGE_TAG,MCP_ENABLED,DATABASE_URL,REDIS_PASSWORD,DOMAIN
           script: |
             set -euo pipefail
             chmod +x "$HOME/mcp/$DEPLOY_ENV/deploy.sh"
-            "$HOME/mcp/$DEPLOY_ENV/deploy.sh" "$DEPLOY_ENV" "$IMAGE_NAME" "$IMAGE_TAG"
+            "$HOME/mcp/$DEPLOY_ENV/deploy.sh" "$DEPLOY_ENV" "$DOCS_IMAGE_NAME" "$IMAGE_NAME" "$IMAGE_TAG" "$MCP_ENABLED"

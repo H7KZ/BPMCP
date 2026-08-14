@@ -1,4 +1,5 @@
 # Prometheus
+# scrapes metrics from the MCP and Traefik services in 15s intervals
 
 global:
   scrape_interval: 15s
@@ -8,15 +9,15 @@ scrape_configs:
   - job_name: mcp
     metrics_path: /metrics
     static_configs:
-      - targets: ['mcp-production:9090']
+      - targets: [ 'mcp-production:9090' ]
         labels:
           env: production
-      - targets: ['mcp-development:9090']
+      - targets: [ 'mcp-development:9090' ]
         labels:
           env: development
 
   - job_name: traefik
     static_configs:
-      - targets: ['traefik:8082']
+      - targets: [ 'traefik:8082' ]
         labels:
           env: production

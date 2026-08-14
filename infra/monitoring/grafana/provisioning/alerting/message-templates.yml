@@ -1,4 +1,6 @@
-# Discord message template
+# Grafana Alerting Message Templates
+#
+# - Discord Alert Message Template
 
 apiVersion: 1
 

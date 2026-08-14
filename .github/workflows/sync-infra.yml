@@ -1,10 +1,13 @@
-# Sync infra to the server
+# Sync Infra
+#
+# - sync infra/ to /opt/stacks on the server
+# - report what landed (no apply)
 
 name: Sync Infra
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     paths:
       - 'infra/**'
       - '.github/workflows/sync-infra.yml'

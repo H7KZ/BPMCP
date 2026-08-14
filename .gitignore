@@ -6,6 +6,9 @@ ops.env
 !.env.example
 !*.env.example
 
+# Logs
+*.log
+
 # SSH / private keys
 *.key
 id_ed25519*
@@ -13,3 +16,4 @@ id_ed25519*
 # Node / build artifacts
 node_modules/
 dist/
+cache/

@@ -1,10 +1,46 @@
 # App stack for one environment
-# Shipped to ~/mcp/<env>/ and driven by deploy.sh
+# shipped to ~/mcp/<env>/ and driven by deploy.sh
 
 services:
+  docs:
+    image: ${DOCS_IMAGE_NAME}:${IMAGE_TAG}
+    restart: unless-stopped
+
+    environment:
+      PORT: "80"
+
+    networks:
+      - traefik-network
+
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://127.0.0.1:80/" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik-network'
+      # Catch-all: humans and every non-MCP GET
+      # Lowest priority so the mcp router below wins its routes
+      - 'traefik.http.routers.docs-${ENV}.rule=Host(`${DOMAIN}`)'
+      - 'traefik.http.routers.docs-${ENV}.priority=1'
+      - 'traefik.http.routers.docs-${ENV}.entrypoints=websecure'
+      - 'traefik.http.routers.docs-${ENV}.tls=true'
+      - 'traefik.http.routers.docs-${ENV}.tls.certresolver=le'
+      - 'traefik.http.services.docs-${ENV}.loadbalancer.server.port=80'
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   mcp:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
     restart: unless-stopped
+    profiles: [ mcp ]
 
     environment:
       NODE_ENV: production
@@ -17,18 +53,15 @@ services:
       redis:
         condition: service_healthy
 
-    # traefik-network: ingress, redis: cache, metrics-network: prometheus scrape
-    # The metrics-network alias (mcp-production / mcp-development) is the static
-    # target Prometheus scrapes on :9090
     networks:
-      traefik-network: {}
-      redis: {}
+      traefik-network: { }
+      redis-network: { }
       metrics-network:
         aliases:
           - mcp-${ENV}
 
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: [ "CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -37,7 +70,11 @@ services:
     labels:
       - 'traefik.enable=true'
       - 'traefik.docker.network=traefik-network'
-      - 'traefik.http.routers.mcp-${ENV}.rule=Host(`${DOMAIN}`)'
+      # High priority
+      # the bare-origin POST endpoint plus the auth/discovery and health routes
+      # Everything else falls through to the docs catch-all
+      - 'traefik.http.routers.mcp-${ENV}.rule=Host(`${DOMAIN}`) && (Method(`POST`) || PathPrefix(`/.well-known`) || PathPrefix(`/oauth`) || Path(`/health`))'
+      - 'traefik.http.routers.mcp-${ENV}.priority=100'
       - 'traefik.http.routers.mcp-${ENV}.entrypoints=websecure'
       - 'traefik.http.routers.mcp-${ENV}.tls=true'
       - 'traefik.http.routers.mcp-${ENV}.tls.certresolver=le'
@@ -52,6 +89,7 @@ services:
   redis:
     image: redis:8.10.0
     restart: unless-stopped
+    profiles: [ mcp ]
 
     command:
       - redis-server
@@ -70,10 +108,10 @@ services:
       REDISCLI_AUTH: ${REDIS_PASSWORD}
 
     networks:
-      - redis
+      - redis-network
 
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -86,10 +124,13 @@ services:
 
 networks:
   traefik-network:
+    name: traefik-network
     external: true
 
-  redis:
+  redis-network:
+    name: redis-network
     driver: bridge
 
   metrics-network:
+    name: metrics-network
     external: true

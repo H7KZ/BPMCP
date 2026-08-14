@@ -1,4 +1,5 @@
 # Loki
+# store logs in a local filesystem, with a retention of 30 days
 
 auth_enabled: false
 

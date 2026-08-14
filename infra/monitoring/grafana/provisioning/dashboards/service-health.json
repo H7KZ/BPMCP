@@ -1,101 +1,227 @@
 {
-  "uid": "mcp-service-health",
-  "title": "MCP — Service Health",
-  "tags": ["mcp"],
-  "timezone": "browser",
-  "editable": true,
-  "schemaVersion": 39,
-  "version": 1,
-  "refresh": "30s",
-  "time": { "from": "now-6h", "to": "now" },
-  "annotations": { "list": [] },
-  "templating": {
-    "list": [
-      {
-        "name": "env",
-        "label": "Environment",
-        "type": "custom",
-        "query": "production,development",
-        "includeAll": false,
-        "multi": false,
-        "current": { "text": "production", "value": "production" }
-      }
-    ]
-  },
-  "panels": [
-    {
-      "id": 1,
-      "type": "stat",
-      "title": "Requests in flight",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
-      "targets": [ { "refId": "A", "expr": "sum(mcp_requests_in_flight{env=~\"$env\"})" } ]
-    },
-    {
-      "id": 2,
-      "type": "timeseries",
-      "title": "Tool calls / sec by status",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
-      "targets": [
-        { "refId": "A", "expr": "sum by (status) (rate(mcp_tool_calls_total{env=~\"$env\"}[5m]))", "legendFormat": "{{status}}" }
-      ]
-    },
-    {
-      "id": 3,
-      "type": "timeseries",
-      "title": "Tool-call latency percentiles",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(mcp_tool_call_duration_seconds_bucket{env=~\"$env\"}[5m])))", "legendFormat": "p50" },
-        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(mcp_tool_call_duration_seconds_bucket{env=~\"$env\"}[5m])))", "legendFormat": "p95" },
-        { "refId": "C", "expr": "histogram_quantile(0.99, sum by (le) (rate(mcp_tool_call_duration_seconds_bucket{env=~\"$env\"}[5m])))", "legendFormat": "p99" }
-      ]
-    },
-    {
-      "id": 4,
-      "type": "timeseries",
-      "title": "InSIS DB query p95",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(mcp_db_query_duration_seconds_bucket{env=~\"$env\"}[5m])))", "legendFormat": "db p95" }
-      ]
-    },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "Redis cache hit rate",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
-      "targets": [
-        { "refId": "A", "expr": "sum(rate(mcp_redis_requests_total{env=~\"$env\",result=\"hit\"}[5m])) / clamp_min(sum(rate(mcp_redis_requests_total{env=~\"$env\"}[5m])), 0.0001)", "legendFormat": "hit rate" }
-      ]
-    },
-    {
-      "id": 6,
-      "type": "table",
-      "title": "Per-tool error breakdown (1h)",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
-      "targets": [
-        { "refId": "A", "expr": "topk(20, sum by (tool) (increase(mcp_tool_calls_total{env=~\"$env\",status=\"error\"}[1h])))", "legendFormat": "{{tool}}", "instant": true, "format": "table" }
-      ]
-    },
-    {
-      "id": 7,
-      "type": "timeseries",
-      "title": "Node runtime — event-loop lag & heap",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
-      "targets": [
-        { "refId": "A", "expr": "nodejs_eventloop_lag_seconds{env=~\"$env\"}", "legendFormat": "event-loop lag (s)" },
-        { "refId": "B", "expr": "nodejs_heap_size_used_bytes{env=~\"$env\"}", "legendFormat": "heap used (bytes)" }
-      ]
-    }
-  ]
+	"uid": "mcp-service-health",
+	"title": "MCP — Service Health",
+	"tags": [
+		"mcp"
+	],
+	"timezone": "browser",
+	"editable": true,
+	"schemaVersion": 39,
+	"version": 1,
+	"refresh": "30s",
+	"time": {
+		"from": "now-6h",
+		"to": "now"
+	},
+	"annotations": {
+		"list": []
+	},
+	"templating": {
+		"list": [
+			{
+				"name": "env",
+				"label": "Environment",
+				"type": "custom",
+				"query": "production,development",
+				"includeAll": false,
+				"multi": false,
+				"current": {
+					"text": "production",
+					"value": "production"
+				}
+			}
+		]
+	},
+	"panels": [
+		{
+			"id": 1,
+			"type": "stat",
+			"title": "Requests in flight",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"gridPos": {
+				"h": 5,
+				"w": 6,
+				"x": 0,
+				"y": 0
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum(mcp_requests_in_flight{env=~\"$env\"})"
+				}
+			]
+		},
+		{
+			"id": 2,
+			"type": "timeseries",
+			"title": "Tool calls / sec by status",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 18,
+				"x": 6,
+				"y": 0
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum by (status) (rate(mcp_tool_calls_total{env=~\"$env\"}[5m]))",
+					"legendFormat": "{{status}}"
+				}
+			]
+		},
+		{
+			"id": 3,
+			"type": "timeseries",
+			"title": "Tool-call latency percentiles",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 8
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "histogram_quantile(0.50, sum by (le) (rate(mcp_tool_call_duration_seconds_bucket{env=~\"$env\"}[5m])))",
+					"legendFormat": "p50"
+				},
+				{
+					"refId": "B",
+					"expr": "histogram_quantile(0.95, sum by (le) (rate(mcp_tool_call_duration_seconds_bucket{env=~\"$env\"}[5m])))",
+					"legendFormat": "p95"
+				},
+				{
+					"refId": "C",
+					"expr": "histogram_quantile(0.99, sum by (le) (rate(mcp_tool_call_duration_seconds_bucket{env=~\"$env\"}[5m])))",
+					"legendFormat": "p99"
+				}
+			]
+		},
+		{
+			"id": 4,
+			"type": "timeseries",
+			"title": "InSIS DB query p95",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"unit": "s"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 8
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "histogram_quantile(0.95, sum by (le) (rate(mcp_db_query_duration_seconds_bucket{env=~\"$env\"}[5m])))",
+					"legendFormat": "db p95"
+				}
+			]
+		},
+		{
+			"id": 5,
+			"type": "timeseries",
+			"title": "Redis cache hit rate",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"unit": "percentunit",
+					"min": 0,
+					"max": 1
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 16
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum(rate(mcp_redis_requests_total{env=~\"$env\",result=\"hit\"}[5m])) / clamp_min(sum(rate(mcp_redis_requests_total{env=~\"$env\"}[5m])), 0.0001)",
+					"legendFormat": "hit rate"
+				}
+			]
+		},
+		{
+			"id": 6,
+			"type": "table",
+			"title": "Per-tool error breakdown (1h)",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 16
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "topk(20, sum by (tool) (increase(mcp_tool_calls_total{env=~\"$env\",status=\"error\"}[1h])))",
+					"legendFormat": "{{tool}}",
+					"instant": true,
+					"format": "table"
+				}
+			]
+		},
+		{
+			"id": 7,
+			"type": "timeseries",
+			"title": "Node runtime — event-loop lag & heap",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 24,
+				"x": 0,
+				"y": 24
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "nodejs_eventloop_lag_seconds{env=~\"$env\"}",
+					"legendFormat": "event-loop lag (s)"
+				},
+				{
+					"refId": "B",
+					"expr": "nodejs_heap_size_used_bytes{env=~\"$env\"}",
+					"legendFormat": "heap used (bytes)"
+				}
+			]
+		}
+	]
 }
