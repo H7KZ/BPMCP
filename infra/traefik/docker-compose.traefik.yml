@@ -23,7 +23,6 @@ services:
       - --entrypoints.websecure.address=:443
 
       # Prometheus metrics for the monitoring stack
-      # Served on the :8082 metrics entrypoint, reachable only over metrics-network
       - --metrics.prometheus=true
       - --metrics.prometheus.entrypoint=metrics
       - --entrypoints.metrics.address=:8082
@@ -57,7 +56,7 @@ services:
       - metrics-network
 
     healthcheck:
-      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      test: [ "CMD", "traefik", "healthcheck", "--ping" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -73,9 +72,8 @@ networks:
   traefik-network:
     name: traefik-network
 
-  # Shared scrape network for the monitoring stack. Create it before Traefik:
-  #   docker network create metrics-network
   metrics-network:
+    name: metrics-network
     external: true
 
 volumes:
