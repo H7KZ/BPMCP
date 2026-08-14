@@ -4,18 +4,17 @@
 
 # Git
 .git/
-.github/
 .gitignore
-
-# Background infrastructure
-infra/
-deploy/
-docs/
 
 # Node / build artifacts
 node_modules/
 dist/
 coverage/
+
+# Local env
+.env
+*.env
+!.env.example
 
 # Docker
 Dockerfile
