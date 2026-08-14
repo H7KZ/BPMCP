@@ -1,4 +1,4 @@
-// Loki
+// Alloy Configuration
 
 discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
@@ -7,9 +7,9 @@ discovery.docker "containers" {
 discovery.relabel "container_labels" {
   targets = discovery.docker.containers.targets
 
-  // Drop the monitoring stack's own logs — noise, not application data.
+  // Drop the monitoring stack's own logs (noise, not application data)
   // Container names are "/<compose-project>-<service>-N" (e.g. /monitoring-grafana-1),
-  // so match the service name anywhere after the leading slash, not just at its start.
+  // so match the service name anywhere after the leading slash, not just at its start
   rule {
     source_labels = ["__meta_docker_container_name"]
     regex         = "/.*(grafana|prometheus|loki|alloy).*"
@@ -37,7 +37,8 @@ loki.source.docker "docker_logs" {
 }
 
 loki.process "parse_json" {
-  // Parse pino JSON. Non-JSON lines pass through as plain text.
+  // Parse pino JSON
+  // Non-JSON lines pass through as plain text
   stage.json {
     expressions = {
       level       = "level",
@@ -51,14 +52,14 @@ loki.process "parse_json" {
     }
   }
 
-  // Drop health-check / metrics-scrape access lines if the app emits them — zero signal.
+  // Drop health-check / metrics-scrape access lines if the app emits them (zero signal)
   stage.drop {
     source              = "route"
     expression          = "^/(health|metrics)$"
     drop_counter_reason = "healthcheck_or_metrics_endpoint"
   }
 
-  // Tiny, low-cardinality stream labels.
+  // Tiny, low-cardinality stream labels
   stage.labels {
     values = {
       level   = "",
@@ -67,7 +68,7 @@ loki.process "parse_json" {
     }
   }
 
-  // High-cardinality identifiers -> structured metadata (queryable, not indexed).
+  // High-cardinality identifiers -> structured metadata (queryable, not indexed)
   stage.structured_metadata {
     values = {
       request_id  = "",

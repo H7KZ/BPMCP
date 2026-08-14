@@ -1,4 +1,9 @@
-# Alert rules.
+# Grafana Alerting Rules
+#
+# - Target down
+# - Error rate high
+# - Latency high
+# - Cache hit-rate low
 
 apiVersion: 1
 

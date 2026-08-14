@@ -1,4 +1,6 @@
-# Discord contact point
+# Grafana Alerting Contact Points
+#
+# - Discord Webhook
 
 apiVersion: 1
 

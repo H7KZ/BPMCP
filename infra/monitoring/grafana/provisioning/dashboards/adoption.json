@@ -1,89 +1,179 @@
 {
-  "uid": "mcp-adoption",
-  "title": "MCP — Adoption",
-  "tags": ["mcp"],
-  "timezone": "browser",
-  "editable": true,
-  "schemaVersion": 39,
-  "version": 1,
-  "refresh": "1m",
-  "time": { "from": "now-30d", "to": "now" },
-  "annotations": { "list": [] },
-  "templating": {
-    "list": [
-      {
-        "name": "env",
-        "label": "Environment",
-        "type": "custom",
-        "query": "production,development",
-        "includeAll": false,
-        "multi": false,
-        "current": { "text": "production", "value": "production" }
-      }
-    ]
-  },
-  "panels": [
-    {
-      "id": 1,
-      "type": "stat",
-      "title": "Total tool calls (24h)",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
-      "targets": [
-        { "refId": "A", "expr": "sum(increase(mcp_tool_calls_total{env=~\"$env\"}[24h]))" }
-      ]
-    },
-    {
-      "id": 2,
-      "type": "stat",
-      "title": "Error rate (24h)",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
-      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
-      "targets": [
-        { "refId": "A", "expr": "sum(increase(mcp_tool_calls_total{env=~\"$env\",status=\"error\"}[24h])) / clamp_min(sum(increase(mcp_tool_calls_total{env=~\"$env\"}[24h])), 1)" }
-      ]
-    },
-    {
-      "id": 3,
-      "type": "piechart",
-      "title": "Calls by tool (24h)",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 0 },
-      "targets": [
-        { "refId": "A", "expr": "sum by (tool) (increase(mcp_tool_calls_total{env=~\"$env\"}[24h]))", "legendFormat": "{{tool}}" }
-      ]
-    },
-    {
-      "id": 4,
-      "type": "timeseries",
-      "title": "Tool calls / sec (adoption curve)",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
-      "targets": [
-        { "refId": "A", "expr": "sum(rate(mcp_tool_calls_total{env=~\"$env\"}[5m]))", "legendFormat": "calls/s" }
-      ]
-    },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "Client mix (calls by client, 1h buckets)",
-      "datasource": { "type": "loki", "uid": "Loki" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
-      "targets": [
-        { "refId": "A", "expr": "sum by (client_name) (count_over_time({service=\"mcp\", env=~\"$env\"}[1h]))", "legendFormat": "{{client_name}}" }
-      ]
-    },
-    {
-      "id": 6,
-      "type": "timeseries",
-      "title": "Error rate over time",
-      "datasource": { "type": "prometheus", "uid": "Prometheus" },
-      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
-      "targets": [
-        { "refId": "A", "expr": "sum(rate(mcp_tool_calls_total{env=~\"$env\",status=\"error\"}[5m])) / clamp_min(sum(rate(mcp_tool_calls_total{env=~\"$env\"}[5m])), 0.0001)", "legendFormat": "error rate" }
-      ]
-    }
-  ]
+	"uid": "mcp-adoption",
+	"title": "MCP — Adoption",
+	"tags": [
+		"mcp"
+	],
+	"timezone": "browser",
+	"editable": true,
+	"schemaVersion": 39,
+	"version": 1,
+	"refresh": "1m",
+	"time": {
+		"from": "now-30d",
+		"to": "now"
+	},
+	"annotations": {
+		"list": []
+	},
+	"templating": {
+		"list": [
+			{
+				"name": "env",
+				"label": "Environment",
+				"type": "custom",
+				"query": "production,development",
+				"includeAll": false,
+				"multi": false,
+				"current": {
+					"text": "production",
+					"value": "production"
+				}
+			}
+		]
+	},
+	"panels": [
+		{
+			"id": 1,
+			"type": "stat",
+			"title": "Total tool calls (24h)",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"gridPos": {
+				"h": 5,
+				"w": 6,
+				"x": 0,
+				"y": 0
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum(increase(mcp_tool_calls_total{env=~\"$env\"}[24h]))"
+				}
+			]
+		},
+		{
+			"id": 2,
+			"type": "stat",
+			"title": "Error rate (24h)",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"unit": "percentunit"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 5,
+				"w": 6,
+				"x": 6,
+				"y": 0
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum(increase(mcp_tool_calls_total{env=~\"$env\",status=\"error\"}[24h])) / clamp_min(sum(increase(mcp_tool_calls_total{env=~\"$env\"}[24h])), 1)"
+				}
+			]
+		},
+		{
+			"id": 3,
+			"type": "piechart",
+			"title": "Calls by tool (24h)",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"gridPos": {
+				"h": 10,
+				"w": 12,
+				"x": 12,
+				"y": 0
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum by (tool) (increase(mcp_tool_calls_total{env=~\"$env\"}[24h]))",
+					"legendFormat": "{{tool}}"
+				}
+			]
+		},
+		{
+			"id": 4,
+			"type": "timeseries",
+			"title": "Tool calls / sec (adoption curve)",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 5
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum(rate(mcp_tool_calls_total{env=~\"$env\"}[5m]))",
+					"legendFormat": "calls/s"
+				}
+			]
+		},
+		{
+			"id": 5,
+			"type": "timeseries",
+			"title": "Client mix (calls by client, 1h buckets)",
+			"datasource": {
+				"type": "loki",
+				"uid": "Loki"
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 12,
+				"y": 10
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum by (client_name) (count_over_time({service=\"mcp\", env=~\"$env\"}[1h]))",
+					"legendFormat": "{{client_name}}"
+				}
+			]
+		},
+		{
+			"id": 6,
+			"type": "timeseries",
+			"title": "Error rate over time",
+			"datasource": {
+				"type": "prometheus",
+				"uid": "Prometheus"
+			},
+			"fieldConfig": {
+				"defaults": {
+					"unit": "percentunit"
+				},
+				"overrides": []
+			},
+			"gridPos": {
+				"h": 8,
+				"w": 12,
+				"x": 0,
+				"y": 13
+			},
+			"targets": [
+				{
+					"refId": "A",
+					"expr": "sum(rate(mcp_tool_calls_total{env=~\"$env\",status=\"error\"}[5m])) / clamp_min(sum(rate(mcp_tool_calls_total{env=~\"$env\"}[5m])), 0.0001)",
+					"legendFormat": "error rate"
+				}
+			]
+		}
+	]
 }

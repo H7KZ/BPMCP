@@ -10,14 +10,14 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-400d}'
-      - '--storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-3GB}'
+      - '--storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-120d}'
+      - '--storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-5GB}'
       - '--web.enable-lifecycle'
     volumes:
       - prometheus-data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-      - '127.0.0.1:9090:9090' # loopback (SSH tunnel)
+      - '127.0.0.1:9090:9090'
     networks:
       - monitoring-network
       - metrics-network
@@ -34,7 +34,7 @@ services:
   grafana:
     image: grafana/grafana:11.4.0
     restart: unless-stopped
-    depends_on: [prometheus, loki]
+    depends_on: [ prometheus, loki ]
     environment:
       - GF_SERVER_ROOT_URL=http://localhost:3000
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
@@ -47,7 +47,7 @@ services:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - '127.0.0.1:3000:3000' # loopback (SSH tunnel)
+      - '127.0.0.1:3000:3000'
     networks:
       - monitoring-network
     logging:
@@ -106,12 +106,18 @@ services:
 
 networks:
   monitoring-network:
+    name: monitoring-network
     driver: bridge
+
   metrics-network:
+    name: metrics-network
     external: true
 
 volumes:
   prometheus-data:
+
   grafana-data:
+
   loki-data:
+
   alloy-data:

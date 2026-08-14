@@ -3,12 +3,17 @@ set -euo pipefail
 
 # ==============================================================================
 # usage-report.sh {daily|weekly|monthly} [environment]
+# - prometheus metrics query
+# - mcp tool usage summary
+# - Discord report
 #
-# Queries the (loopback) Prometheus and posts a MCP usage summary to Discord.
-# NON-IDENTIFYING metrics only — volume / reliability / popularity. No unique
-# users, no IPs (see CONTEXT.md "Usage" + docs/adr/0002-monitoring-topology.md).
+# Run by ops-usage-report@{daily,weekly,monthly}.timer
 #
-# Run by ops-usage-report@{daily,weekly,monthly}.timer. CONFIG: /etc/ops.env
+# Queries Prometheus for Model Context Protocol (MCP) tool traffic, error rates,
+# and p95 latency. Formats the top tools and overall health into a Markdown
+# summary and sends it to Discord to track usage trends over time
+#
+# CONFIG: /etc/ops.env
 # ==============================================================================
 
 # Optional external config (plain KEY=VALUE, not code)
