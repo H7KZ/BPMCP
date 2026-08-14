@@ -1,12 +1,16 @@
-# Production promotion. Two triggers:
-#   * release: published  → promote the release commit's already-built image (no rebuild)
-#   * workflow_dispatch   → manual escape hatch (choose a SHA, optionally rebuild)
+# CD: Production Promotion
+#
+# - Release: published
+#   promote the release commit's already-built images (no rebuild)
+#
+# - Workflow_dispatch
+#   manual escape hatch (choose a SHA, optionally rebuild)
 
 name: Deploy Production
 
 on:
   release:
-    types: [published]
+    types: [ published ]
   workflow_dispatch:
     inputs:
       image_tag:
@@ -18,7 +22,7 @@ on:
         required: false
         type: string
       build:
-        description: 'Build the image from this ref before deploying (escape hatch)'
+        description: 'Build the images from this ref before deploying (escape hatch)'
         type: boolean
         default: false
 
@@ -37,6 +41,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       image_name: ${{ steps.r.outputs.image_name }}
+      docs_image_name: ${{ steps.r.outputs.docs_image_name }}
       image_tag: ${{ steps.r.outputs.image_tag }}
       git_ref: ${{ steps.r.outputs.git_ref }}
       need_build: ${{ steps.r.outputs.need_build }}
@@ -62,6 +67,7 @@ jobs:
           fi
           {
             echo "image_name=$NAME"
+            echo "docs_image_name=$NAME-docs"
             echo "image_tag=$TAG"
             echo "git_ref=$REF"
             echo "need_build=$NEED"
@@ -76,9 +82,9 @@ jobs:
       float_tag: latest
     secrets: inherit
 
-  # Automatic path: the image must already exist (built + validated in dev)
+  # Automatic path: the docs image must already exist (built + validated in dev)
   guard:
-    name: Verify image exists in GHCR
+    name: Verify images exist in GHCR
     needs: resolve
     if: needs.resolve.outputs.need_build != 'true'
     runs-on: ubuntu-latest
@@ -86,6 +92,8 @@ jobs:
     permissions:
       contents: read
       packages: read
+    outputs:
+      mcp_present: ${{ steps.check.outputs.mcp_present }}
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v4
@@ -93,19 +101,28 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Check manifest
+      - name: Check manifests
+        id: check
         env:
           NAME: ${{ needs.resolve.outputs.image_name }}
+          DOCS_NAME: ${{ needs.resolve.outputs.docs_image_name }}
           TAG: ${{ needs.resolve.outputs.image_tag }}
         run: |
-          if ! docker manifest inspect "$NAME:$TAG" >/dev/null 2>&1; then
-            echo "::error::No image $NAME:$TAG in GHCR. A Release must point at a commit already built and validated in development. To ship an arbitrary SHA, use manual dispatch with build=true."
+          if ! docker manifest inspect "$DOCS_NAME:$TAG" >/dev/null 2>&1; then
+            echo "::error::No docs image $DOCS_NAME:$TAG in GHCR. A Release must point at a commit already built and validated in development. To ship an arbitrary SHA, use manual dispatch with build=true."
             exit 1
           fi
-          echo "::notice::Found $NAME:$TAG"
+          echo "::notice::Found $DOCS_NAME:$TAG"
+          if docker manifest inspect "$NAME:$TAG" >/dev/null 2>&1; then
+            echo "mcp_present=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Found $NAME:$TAG — mcp will be deployed"
+          else
+            echo "mcp_present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No $NAME:$TAG — deploying docs only"
+          fi
 
   deploy:
-    needs: [resolve, build, guard]
+    needs: [ resolve, build, guard ]
     if: >-
       always() &&
       needs.resolve.result == 'success' &&
@@ -114,15 +131,17 @@ jobs:
     uses: ./.github/workflows/_deploy.yml
     with:
       environment: production
+      docs_image_name: ${{ needs.build.outputs.docs_image_name || needs.resolve.outputs.docs_image_name }}
       image_name: ${{ needs.build.outputs.image_name || needs.resolve.outputs.image_name }}
       image_tag: ${{ needs.build.outputs.image_tag || needs.resolve.outputs.image_tag }}
+      mcp_built: ${{ needs.build.outputs.mcp_built || needs.guard.outputs.mcp_present }}
       git_ref: ${{ needs.resolve.outputs.git_ref }}
     secrets: inherit
 
-  # Point the floating `latest` tag at the promoted image (manifest copy, no rebuild).
+  # Point the floating `latest` tag at the promoted images (manifest copy, no rebuild)
   promote-latest:
-    needs: [resolve, build, deploy]
-    if: needs.deploy.result == 'success'
+    needs: [ resolve, build, guard, deploy ]
+    if: always() && needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -135,8 +154,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Move latest tag
+      - name: Move latest tags
         env:
           NAME: ${{ needs.build.outputs.image_name || needs.resolve.outputs.image_name }}
+          DOCS_NAME: ${{ needs.build.outputs.docs_image_name || needs.resolve.outputs.docs_image_name }}
           TAG: ${{ needs.build.outputs.image_tag || needs.resolve.outputs.image_tag }}
-        run: docker buildx imagetools create --tag "$NAME:latest" "$NAME:$TAG"
+          MCP_PRESENT: ${{ needs.build.outputs.mcp_built || needs.guard.outputs.mcp_present }}
+        run: |
+          docker buildx imagetools create --tag "$DOCS_NAME:latest" "$DOCS_NAME:$TAG"
+          if [ "$MCP_PRESENT" = "true" ]; then
+            docker buildx imagetools create --tag "$NAME:latest" "$NAME:$TAG"
+          fi

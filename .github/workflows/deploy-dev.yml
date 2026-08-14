@@ -1,17 +1,18 @@
-# Development pipeline: every merge to main builds the image once and auto-deploys
-# it to the development environment. This is the artifact that later gets promoted
+# CD: Development Pipeline
+#
+# every merge to main builds the image once and auto-deploys it to the
+# development environment. This is the artifact that later gets promoted
 # to production unchanged (build once, deploy many)
 
 name: Deploy Development
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
       - 'infra/**'
       - '.example/**'
+      - 'README.md'
       - '.github/ISSUE_TEMPLATE/**'
 
 permissions:
@@ -34,6 +35,8 @@ jobs:
     uses: ./.github/workflows/_deploy.yml
     with:
       environment: development
+      docs_image_name: ${{ needs.build.outputs.docs_image_name }}
       image_name: ${{ needs.build.outputs.image_name }}
       image_tag: ${{ needs.build.outputs.image_tag }}
+      mcp_built: ${{ needs.build.outputs.mcp_built }}
     secrets: inherit
